@@ -2,28 +2,30 @@
 import streamlit as st
 import pandas as pd
 import os
+import json
+import base64
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 st.set_page_config(page_title="طرح‌های جاباما", layout="wide")
 
-# فایل CSV محلی برای بررسی تکراری بودن
+# فایل CSV محلی
 DATA_FILE = "all_requests.csv"
 LOGO_PATH = "jabama_logo.png"
 VIDEO_URL = "https://www.youtube.com/embed/Bey4XXJAqS8"
 
-# ساخت فایل CSV در صورت نبود
+# بررسی وجود فایل CSV
 if not os.path.exists(DATA_FILE):
     pd.DataFrame(columns=["host_code", "place_name", "plan", "timestamp"]).to_csv(DATA_FILE, index=False)
 df = pd.read_csv(DATA_FILE)
 
-# تابع اتصال به Google Sheets با استفاده از کل secrets
+# توابع Google Sheets با استفاده از Base64 در secrets
 def get_google_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds_dict = dict(st.secrets)  # استفاده از کل secrets
+    creds_b64 = st.secrets["credentials_b64"]
+    creds_dict = json.loads(base64.b64decode(creds_b64).decode("utf-8"))
     credentials = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(credentials)
-    return client
+    return gspread.authorize(credentials)
 
 def write_to_google_sheet(host_code, place_name, plan, timestamp):
     try:
@@ -33,14 +35,14 @@ def write_to_google_sheet(host_code, place_name, plan, timestamp):
     except Exception as e:
         st.error(f"❌ خطا در اتصال به Google Sheet: {e}")
 
-# نمایش لوگو
+# لوگو
 col1, col2 = st.columns([3, 1])
 with col2:
     if os.path.exists(LOGO_PATH):
         st.image(LOGO_PATH, use_container_width=True)
 
-# عنوان و ویدیو
-st.markdown("<h1 style='text-align: center; font-family: sans-serif;'>با طرح‌های ویژه جاباما بیشتر دیده شوید!</h1>", unsafe_allow_html=True)
+# ویدیو و عنوان
+st.markdown("<h1 style='text-align: center;'>با طرح‌های ویژه جاباما بیشتر دیده شوید!</h1>", unsafe_allow_html=True)
 st.markdown("### معرفی کوتاه:")
 st.video(VIDEO_URL)
 st.markdown("---")
@@ -53,7 +55,7 @@ plans = {
     "طرح ۳": {"ویژگی‌ها": ["مشاوره بازاریابی", "اولویت در جستجو"], "شرایط": ["ارائه تعهدنامه", "بیش از ۶ ماه فعالیت"]}
 }
 
-# فرم‌ها برای هر طرح
+# نمایش فرم‌ها برای هر طرح
 for plan_name, content in plans.items():
     with st.container():
         st.subheader(plan_name)
